@@ -413,11 +413,12 @@ class RelayBuildModule : public runtime::ModuleNode {
     // Relay IRModule -> IRModule optimizations.
     IRModule module = WithAttrs(
         relay_module, {{tvm::attr::kExecutor, executor_}, {tvm::attr::kRuntime, runtime_}});
+    // 优化
     relay_module = OptimizeImpl(std::move(module));
 
-    // Get the updated function and new IRModule to build.
-    // Instead of recreating the IRModule, we should look at the differences between this and the
-    // incoming IRModule to see if we can just pass (IRModule, Function) to the code generator.
+    // 获取更新的函数和新的 IRModule 来构建。
+    // 与其重新创建 IRModule，不如查看它与传入的 IRModule 之间的区别，
+    // 看看我们是否可以将 (IRModule, Function) 传递给代码生成器。
     Function func = Downcast<Function>(relay_module->Lookup("main"));
     IRModule func_module = WithAttrs(IRModule::FromExpr(func),
                                      {{tvm::attr::kExecutor, executor_},
@@ -426,6 +427,7 @@ class RelayBuildModule : public runtime::ModuleNode {
                                       {tvm::attr::kConstantMemoryPools, constant_memory_pools_}});
 
     // Generate code for the updated function.
+    // 计算图生成。判断是生成 GraphCodegen 还是 AOTCodegen
     executor_codegen_ = MakeExecutorCodegen(executor_->name);
     executor_codegen_->Init(nullptr, config_->primitive_targets);
     executor_codegen_->Codegen(func_module, func, mod_name);

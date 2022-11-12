@@ -51,7 +51,9 @@ inline Expr MakeConv(Expr data, Expr weight, Array<IndexExpr> strides, Array<Ind
   attrs->kernel_layout = std::move(kernel_layout);
   attrs->out_layout = std::move(out_layout);
   attrs->out_dtype = std::move(out_dtype);
+  
   const Op& op = Op::Get(op_name);
+  // 构造了一个可调用的node出来，不仅仅有执行逻辑，还包含了推理时的数据和权重
   return Call(op, {data, weight}, Attrs(attrs), {});
 }
 

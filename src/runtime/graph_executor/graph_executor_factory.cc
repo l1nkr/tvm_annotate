@@ -207,6 +207,7 @@ TVM_REGISTER_GLOBAL("tvm.graph_executor_factory.create")
       // [param1_name, param1_tensor], ...
       ICHECK_EQ((args.size() - 3) % 2, 0);
       std::unordered_map<std::string, tvm::runtime::NDArray> params;
+      // 参数不止这些，利用map存多个参数
       for (size_t i = 3; i < static_cast<size_t>(args.size()); i += 2) {
         std::string name = args[i].operator String();
         params[name] = args[i + 1].operator tvm::runtime::NDArray();

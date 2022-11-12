@@ -4493,8 +4493,9 @@ def from_pytorch(
         Dict of converted parameters stored in tvm.runtime.ndarray format
     """
     import torch
-
+    # 初始化容器，用于保存relay的信息
     mod = tvm.IRModule()
+    # 加载辅助函数
     prelude = Prelude(mod)
     enable_lower_all_tuples = True
 

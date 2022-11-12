@@ -73,6 +73,8 @@ class VMCompiler(object):
     """Compiler that compiles Relay module to VM executable."""
 
     def __init__(self):
+        # 这个 _vm._VMCompiler 返回的结果在c++里面看过了
+        # 但是奇怪的是，c++返回的对象似乎没有下面的这些方法
         self.mod = _vm._VMCompiler()
         self._lower = self.mod["lower"]
         self._codegen = self.mod["codegen"]
@@ -121,8 +123,10 @@ class VMCompiler(object):
             Host compilation target, if target is device.
         """
         raw_targets = Target.canon_multi_target_and_host(target, target_host)
+        # 查看 autotvm 有没有已经预先调好的参数
         tophub_context = self._tophub_context(raw_targets)
         with tophub_context:
+            # tvm.runtime.packed_func
             self._lower(mod, raw_targets)
 
     def codegen(self):

@@ -134,6 +134,7 @@ class LocalBuilder(Builder):
         for i in range(0, len(measure_inputs), self.n_parallel):
             futures = []
             for inp in measure_inputs[i : i + self.n_parallel]:
+                # 首先使用submit为executor分发任务，再使用get得到结果
                 ret = self.executor.submit(self.build_func, inp, self.tmp_dir, **self.build_kwargs)
                 futures.append(ret)
 
@@ -318,7 +319,7 @@ class RPCRunner(Runner):
 
     def set_task(self, task):
         self.task = task
-
+        # 检查client的链接
         if check_remote(task.target, self.key, self.host, self.port):
             logger.info("Get devices for measurement successfully!")
         else:
@@ -476,8 +477,12 @@ class LocalRunner(RPCRunner):
         from ...rpc.tracker import Tracker
 
         self.task = task
+        # 构建tracker和server，应该是用于进程通信
         tracker = Tracker(port=9000, port_end=10000, silent=True)
         device_key = "$local$device$%d" % tracker.port
+        # Tracker初始化之后开始监听，
+        # 但因为没有消息进入socket，所以不会有任何on_messge被触发，
+        # 直到Server构建的时候和Tracker开始交互
         server = Server(
             port=9000,
             port_end=10000,
@@ -789,7 +794,8 @@ def request_remote(device_key, host=None, port=None, priority=1, timeout=60):
     # connect to the tracker
     host = host or os.environ["TVM_TRACKER_HOST"]
     port = port or int(os.environ["TVM_TRACKER_PORT"])
-
+    # 检查的方式即首先调用connect_tracker得到TrackerSession，
+    # 然后通过request得到RPC链接对象，测试通信。
     tracker = _rpc.connect_tracker(host, port)
     remote = tracker.request(device_key, priority=priority, session_timeout=timeout)
     return remote

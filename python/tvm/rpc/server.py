@@ -347,6 +347,7 @@ class PopenRPCServerState(object):
             logger.info("bind to %s:%d", host, self.port)
             sock.listen(1)
             self.sock = sock
+            # 创建监听线程
             self.thread = threading.Thread(
                 target=_listen_loop,
                 args=(self.sock, self.port, key, tracker_addr, load_library, self.custom_addr),
@@ -471,7 +472,7 @@ class Server(object):
         except NameError:
             raise RuntimeError("Please compile with USE_RPC=1")
         self.proc = PopenWorker()
-        # send the function
+        # 发送一个新的函数task fn(*args, **kwargs)给子进程
         self.proc.send(
             _popen_start_rpc_server,
             [

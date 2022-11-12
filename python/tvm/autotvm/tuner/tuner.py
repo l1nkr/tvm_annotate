@@ -110,6 +110,32 @@ class Tuner(object):
         si_prefix: str
             One of tvm.autotvm.utils.SI_PREFIXES. The SI prefix to use when reporting FLOPS.
         """
+        # tuning_option = {
+        #     "log_filename": log_file,
+        #     "tuner": "random",
+        #     "early_stopping": None,
+        #     "measure_option": autotvm.measure_option(
+        #         # 在本机进行编译
+        #         builder=autotvm.LocalBuilder(),
+        #         # 在本机运行生成的代码
+        #         runner=autotvm.LocalRunner(
+        #             number=1, repeat=10, min_repeat_ms=0, enable_cpu_cache_flush=True
+        #         ),
+        #     ),
+        # }
+        
+        # tuner_obj.tune(
+        #     n_trial=n_trial,
+        #     early_stopping=early_stopping,
+        #     measure_option=measure_option,
+        #     callbacks=[
+        #         autotvm.callback.progress_bar(n_trial, prefix=prefix),
+        #         autotvm.callback.log_to_file(log_filename),
+        #     ],
+        # )
+        
+        # Get a standard measure_batch function
+        # 创建评估函数，设置在本机进行编译和运行
         measure_batch = create_measure_batch(self.task, measure_option)
         n_parallel = getattr(measure_batch, "n_parallel", 1)
         early_stopping = early_stopping or 1e9
@@ -127,10 +153,11 @@ class Tuner(object):
         while i < n_trial:
             if not self.has_next():
                 break
-
+            # next_batch 获取下一批数据
             configs = self.next_batch(min(n_parallel, n_trial - i))
 
             inputs = [MeasureInput(self.task.target, self.task, config) for config in configs]
+            # 得到评估结果
             results = measure_batch(inputs)
 
             # keep best config

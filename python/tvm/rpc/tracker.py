@@ -304,7 +304,9 @@ class TCPEventHandler(tornado_util.TCPHandler):
 
 class TrackerServerHandler(object):
     """Tracker that tracks the resources."""
-
+    # TrackerServerHandler.run启动ioloop.IOLoop，
+    # 这个类用来处理信息io
+    # 启动后使用_on_event进行信息接受和处理，继续调用TCPEventHandler处理信息
     def __init__(self, sock, stop_key):
         self._scheduler_map = {}
         self._sock = sock
@@ -322,6 +324,7 @@ class TrackerServerHandler(object):
         while True:
             try:
                 conn, addr = self._sock.accept()
+                # 继续调用TCPEventHandler处理信息
                 TCPEventHandler(self, conn, addr)
             except socket.error as err:
                 if err.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
@@ -378,6 +381,7 @@ class TrackerServerHandler(object):
 
 def _tracker_server(listen_sock, stop_key):
     asyncio.set_event_loop(asyncio.new_event_loop())
+    # 用TrackerServerHandler来处理消息
     handler = TrackerServerHandler(listen_sock, stop_key)
     handler.run()
 
@@ -407,6 +411,7 @@ class PopenTrackerServerState(object):
             raise ValueError("cannot bind to any port in [%d, %d)" % (port, port_end))
         logger.info("bind to %s:%d", host, self.port)
         sock.listen(1)
+        # 用TrackerServerHandler来处理消息
         self.thread = threading.Thread(target=_tracker_server, args=(sock, self.stop_key))
         self.thread.start()
         self.host = host
@@ -416,6 +421,9 @@ def _popen_start_tracker_server(host, port=9190, port_end=9199, silent=False):
     # This is a function that will be sent to the
     # Popen worker to run on a separate process.
     # Create and start the server in a different thread
+    
+    # 首先创建socket并查找可用端口，
+    # 开始监听之后创建子进程处理socket信息交互，用TrackerServerHandler来处理消息
     state = PopenTrackerServerState(host, port, port_end, silent)
     PopenTrackerServerState.current = state
     # returns the port so that the main can get the port number.
@@ -447,6 +455,9 @@ class Tracker(object):
             logger.setLevel(logging.WARN)
         self.proc = PopenWorker()
         # send the function
+        
+        # 首先创建socket并查找可用端口，
+        # 开始监听之后创建子进程处理socket信息交互，用TrackerServerHandler来处理消息
         self.proc.send(
             _popen_start_tracker_server,
             [

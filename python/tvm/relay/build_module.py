@@ -60,6 +60,7 @@ class BuildModule(object):
 
     def __init__(self):
         self.mod = _build_module._BuildModule()
+        # 这里应该将 __getitem__ 方法重写了。会调用c++ 中的 GetFunction，从里面获取函数
         self._get_graph_json = self.mod["get_graph_json"]
         self._get_module = self.mod["get_module"]
         self._build = self.mod["build"]
@@ -360,6 +361,7 @@ def build(
         tophub_context = autotvm.utils.EmptyContext()
 
     with tophub_context:
+        # 再往下会调用 c++ 
         bld_mod = BuildModule()
         graph_json, runtime_mod, params = bld_mod.build(
             mod=ir_mod,

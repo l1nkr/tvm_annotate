@@ -51,9 +51,11 @@ def _lower(mod, target, params, opt_level=3):
     # Alter op layout code has been written expecting that tuning is applied
     # without it, so we disable AlterOpLayout to maintain that behavior.
     with tvm.transform.PassContext(opt_level=opt_level, disabled_pass={"AlterOpLayout"}):
+        # 编译 Relay module 成 VM executable.
         compiler = relay.vm.VMCompiler()
         if params:
             compiler.set_params(params)
+        # lowing 到虚拟机字节码
         compiler.lower(mod, target=target)
 
 
@@ -125,6 +127,7 @@ def extract_from_multiple_program(mods, params, target, target_host=None, ops=No
         logger.disabled = True
 
         for mod, param in zip(mods, params):
+            # 拿到 tvm.IRModule
             if isinstance(mod, relay.function.Function):
                 mod = tvm.IRModule.from_expr(mod)
             assert isinstance(
@@ -132,6 +135,7 @@ def extract_from_multiple_program(mods, params, target, target_host=None, ops=No
             ), "only support relay Module or Function to be tuned"
             relay.backend.te_compiler.get().clear()
             # wrap build call in thread to avoid multiprocessing problems
+            # 开启线程进行 lowing
             build_thread = threading.Thread(target=_lower, args=(mod, target, param))
             build_thread.start()
             build_thread.join()

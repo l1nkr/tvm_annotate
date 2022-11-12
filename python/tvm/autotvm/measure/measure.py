@@ -276,9 +276,12 @@ def create_measure_batch(task, option):
     measure_batch: callable
         a callback function to measure a batch of configs
     """
+    # 在（本机）进行编译
     builder = option["builder"]
+    # 在（本机）运行生成的代码
     runner = option["runner"]
-
+    # 构建tracker和server，然后调用RPCRunner.set_task进行remote链接的检查
+    # 这一步骤中构建的tracker和server都是服务器端，tracker用于记录信息，server用于和client与tracker交互。
     attach_objects = runner.set_task(task)
 
     # feed device related information from runner to builder
@@ -286,6 +289,7 @@ def create_measure_batch(task, option):
     build_kwargs = runner.get_build_kwargs()
     builder.set_task(task, build_kwargs)
 
+    # 进行评估，编译出来，然后进行运行
     def measure_batch(measure_inputs):
         build_results = builder.build(measure_inputs)
         results = runner.run(measure_inputs, build_results)
