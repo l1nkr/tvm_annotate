@@ -5687,22 +5687,27 @@ class GraphProto:
 
     def _construct_nodes(self, graph):
         """Nodes are stored as directed acyclic graph."""
+        # 遍历onnx模型的每一个节点
         for node in graph.node:
+            # 算子名称不是节点名称
             op_name = node.op_type
+            # 解析节点属性
             attr = self._parse_attr(node.attribute)
             # Create and populate input list.
             inputs = onnx_input()
+            # 获取节点的所有输入
             for i in node.input:
                 if i != "":
                     inputs.append(self._nodes[self._renames.get(i, i)])
                 else:
                     inputs.append(None)
             i_name = self._parse_value_proto(node)
+            # 获取节点的输出
             node_output = self._fix_outputs(op_name, node.output)
             attr["tvm_custom"] = {}
             attr["tvm_custom"]["name"] = i_name
             attr["tvm_custom"]["num_outputs"] = len(node_output)
-
+            # 将当前 onnx 节点转化为 tvm relay ir 
             op = self._convert_operator(op_name, inputs, attr, self.opset)
             if not isinstance(op, _expr.TupleWrapper):
                 outputs_num = 1
@@ -5718,14 +5723,21 @@ class GraphProto:
                 # ONNX supports optional outputs for some nodes.
                 # This block searches for missing outputs in the ONNX graph
                 # and removes any unneeded ops
+                # onnx 支持一个节点有多个输出，但是有些输出可能并没有使用，
+                # 在转换为 relay ir 的时候，要将这些输出剔除掉。
+                # 具体做法是，获取节点的有效输出，如果输出没有名字，
+                # 那么认为这个输出没有被（自己或者其他节点）使用，属于无效输出
                 valid_outputs = [False] * outputs_num
                 for i, output in enumerate(node_output):
                     if output != "":
                         valid_outputs[i] = True
                 # If we have outputs ONNX isn't expecting, we need to drop them
+                # 如果存在无效输出
                 if not all(valid_outputs):
+                    # 这里op为转换后的relay表示
                     tup = op.astuple()
                     # TupleWrapper can also wrap ops with TupleType outputs
+                    # 将有效输出挑选出来，组成当前节点的实际输出
                     if isinstance(tup, _expr.Tuple):
                         # For tuples, we extract the fields instead of using GetTupleItem
                         outputs = [tup.fields[i] for i, valid in enumerate(valid_outputs) if valid]
@@ -5735,9 +5747,11 @@ class GraphProto:
                     # Create the new op with valid outputs
                     if len(outputs) == 1:
                         op = outputs[0]
+                    # 如果存在无效输出，那么当前节点的 relay ir 需要重新生成
                     elif len(outputs) != outputs_num:
                         op = _expr.TupleWrapper(_expr.Tuple(outputs), len(outputs))
                     # Drop invalid outputs for the onnx node
+                    # 更新onnx节点的输出表
                     outputs_num = len(outputs)
                     node_output = [output for output in node_output if output != ""]
             assert (
@@ -5745,7 +5759,7 @@ class GraphProto:
             ), "Number of output mismatch {} vs {} in {}.".format(
                 len(node_output), outputs_num, op_name
             )
-
+            # 将节点的值加入节点表，节点的值为节点的tvm表示
             if outputs_num == 1:
                 self._nodes[node_output[0]] = op
             else:
@@ -5810,9 +5824,12 @@ class GraphProto:
         sym : tvm.relay.function.Function
             Converted relay function
         """
+        # 获取算子映射表
         convert_map = _get_convert_map(opset)
+        # 算子在_identity_list表中，调用get_relay_op得到转换后的算子表达；
         if op_name in _identity_list:
             sym = get_relay_op(op_name)(*inputs, **attrs)
+        # 在算子转换映射表中，调用映射接口转换算子
         elif op_name in convert_map:
             sym = convert_map[op_name](inputs, attrs, self._params)
         else:

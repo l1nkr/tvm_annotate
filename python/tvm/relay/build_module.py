@@ -377,7 +377,7 @@ def build(
         devices = bld_mod.get_devices()
         lowered_ir_mods = bld_mod.get_irmodule()
         executor_codegen_metadata = bld_mod.get_executor_codegen_metadata()
-
+        # 工厂模式，会有多种不同的构造方法，根据不同的executor构造executor_factory   
         if executor.name == "aot":
             executor_factory = _executor_factory.AOTExecutorFactoryModule(
                 ir_mod,

@@ -326,7 +326,8 @@ class RelayBuildModule : public runtime::ModuleNode {
     ICHECK(relay_module.defined()) << "The IRModule must be defined for the Relay compiler.";
 
     backend::BindParamsInModule(relay_module, params_);
-
+    // 添加一系列graph级pass。返回得到的pass_seqs就是pass的集合
+    // 接下来还会往这个pass_seqs中继续加入pass
     Array<Pass> pass_seqs =
         GetPassPrefix(/*is_homogenous=*/config_->primitive_targets.size() == 1, /*is_vm=*/false);
     transform::PassContext pass_ctx = PassContext::Current();
@@ -347,6 +348,7 @@ class RelayBuildModule : public runtime::ModuleNode {
     pass_seqs.push_back(transform::FuseOps());
 
     // Create a sequential pass and perform optimizations.
+    // 通过pass_seqs构建出transform::Pass，并准备开始进行优化
     transform::Pass seq = transform::Sequential(pass_seqs);
     if (config_->optional_homogeneous_target.defined()) {
       With<Target> tctx(config_->optional_homogeneous_target);
@@ -356,6 +358,7 @@ class RelayBuildModule : public runtime::ModuleNode {
     }
 
     // Do layout rewrite for auto-scheduler.
+    // 如果使用ansor的话，还需要进行layout rewrite
     if (backend::IsAutoSchedulerEnabled() && config_->optional_homogeneous_target.defined()) {
       Pass major_pass = transform::AutoSchedulerLayoutRewrite();
       bool enable_layout_rewrite_targets =
@@ -413,7 +416,7 @@ class RelayBuildModule : public runtime::ModuleNode {
     // Relay IRModule -> IRModule optimizations.
     IRModule module = WithAttrs(
         relay_module, {{tvm::attr::kExecutor, executor_}, {tvm::attr::kRuntime, runtime_}});
-    // 优化
+    // 图级优化。里面会添加一系列graph级pass
     relay_module = OptimizeImpl(std::move(module));
 
     // 获取更新的函数和新的 IRModule 来构建。
